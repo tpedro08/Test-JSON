@@ -3,10 +3,28 @@ import json
 import time
 from pathlib import Path
 from deep_translator import GoogleTranslator
+import fitz  # pymupdf
 
 CHUNK_SIZE = 4500
 DELAY = 1.5        # seconds between requests
 MAX_RETRIES = 5
+
+
+def extract_text(input_path: Path) -> str:
+    suffix = input_path.suffix.lower()
+    if suffix == ".pdf":
+        doc = fitz.open(str(input_path))
+        text = "\n".join(page.get_text() for page in doc).strip()
+        doc.close()
+        if not text:
+            print("Error: no extractable text found in PDF (may contain only images)")
+            sys.exit(1)
+        return text
+    elif suffix == ".txt":
+        return input_path.read_text(encoding="utf-8")
+    else:
+        print(f"Error: unsupported file type '{suffix}'. Use .txt or .pdf")
+        sys.exit(1)
 
 
 def chunk_text(text: str, size: int = CHUNK_SIZE) -> list[str]:
@@ -49,7 +67,7 @@ def save_progress(progress_file: Path, data: dict):
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python translate_large.py <file.txt>")
+        print("Usage: python translate_large.py <file.txt|file.pdf>")
         sys.exit(1)
 
     input_path = Path(sys.argv[1])
@@ -57,7 +75,7 @@ def main():
         print(f"Error: file not found: {input_path}")
         sys.exit(1)
 
-    output_path = input_path.with_stem(input_path.stem + "_translated")
+    output_path = input_path.with_stem(input_path.stem + "_translated").with_suffix(".txt")
     progress_path = input_path.with_suffix(".progress.json")
 
     print(f"Input:    {input_path}")
@@ -65,7 +83,7 @@ def main():
     print(f"Progress: {progress_path}")
     print()
 
-    text = input_path.read_text(encoding="utf-8")
+    text = extract_text(input_path)
     chunks = chunk_text(text)
     total = len(chunks)
     print(f"Total characters : {len(text):,}")
@@ -90,7 +108,7 @@ def main():
             result = translate_chunk(chunk)
             translated.append(result)
 
-            print(f"  ✓", flush=True)
+            print(f"  OK", flush=True)
 
             progress["done"] = translated
             progress["next_index"] = i + 1
