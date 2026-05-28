@@ -39,12 +39,12 @@ def translate_chunk(chunk: str) -> str:
 
 def load_progress(progress_file: Path) -> dict:
     if progress_file.exists():
-        return json.loads(progress_file.read_text())
+        return json.loads(progress_file.read_text(encoding="utf-8"))
     return {"done": [], "next_index": 0}
 
 
 def save_progress(progress_file: Path, data: dict):
-    progress_file.write_text(json.dumps(data, ensure_ascii=False))
+    progress_file.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
 
 def main():
