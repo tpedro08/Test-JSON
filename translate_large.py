@@ -4,6 +4,10 @@ import time
 from pathlib import Path
 from deep_translator import GoogleTranslator
 import fitz  # pymupdf
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import cm
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 
 CHUNK_SIZE = 4500
 DELAY = 1.5        # seconds between requests
@@ -65,6 +69,31 @@ def save_progress(progress_file: Path, data: dict):
     progress_file.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
 
+def save_pdf(text: str, output_path: Path):
+    doc = SimpleDocTemplate(
+        str(output_path),
+        pagesize=A4,
+        leftMargin=2.5 * cm,
+        rightMargin=2.5 * cm,
+        topMargin=2.5 * cm,
+        bottomMargin=2.5 * cm,
+    )
+    styles = getSampleStyleSheet()
+    style = styles["Normal"]
+    style.fontName = "Times-Roman"
+    style.fontSize = 11
+    style.leading = 16
+
+    story = []
+    for para in text.split("\n"):
+        para = para.strip()
+        if para:
+            story.append(Paragraph(para, style))
+            story.append(Spacer(1, 6))
+
+    doc.build(story)
+
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: python translate_large.py <file.txt|file.pdf>")
@@ -75,7 +104,7 @@ def main():
         print(f"Error: file not found: {input_path}")
         sys.exit(1)
 
-    output_path = input_path.with_stem(input_path.stem + "_translated").with_suffix(".txt")
+    output_path = input_path.with_stem(input_path.stem + "_translated").with_suffix(".pdf")
     progress_path = input_path.with_suffix(".progress.json")
 
     print(f"Input:    {input_path}")
@@ -121,10 +150,11 @@ def main():
         print("\n\nInterrupted. Progress saved — run the same command to resume.")
         sys.exit(0)
 
-    output_path.write_text(" ".join(translated), encoding="utf-8")
+    full_text = " ".join(translated)
+    save_pdf(full_text, output_path)
     progress_path.unlink(missing_ok=True)
 
-    print(f"\nDone! Translated file saved to: {output_path}")
+    print(f"\nDone! Translated PDF saved to: {output_path}")
 
 
 if __name__ == "__main__":

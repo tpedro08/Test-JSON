@@ -3,3 +3,4 @@ uvicorn[standard]
 pymupdf
 deep-translator
 python-multipart
+reportlab
